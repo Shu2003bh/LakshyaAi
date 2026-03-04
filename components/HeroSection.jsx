@@ -1,74 +1,94 @@
-"use client"
-import React, { useEffect, useRef } from 'react'
-import Link from "next/link"
-import { Button } from './button'
-import Image from "next/image";
+"use client";
 
+import React, { useEffect, useRef } from "react";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const HeroSection = () => {
+  const imageRef = useRef(null);
 
-    const imageref = useRef(null)
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!imageRef.current) return;
 
-    useEffect(() => {
-        const imageElement = imageref.current;
+      if (window.scrollY > 100) {
+        imageRef.current.classList.add("scrolled");
+      } else {
+        imageRef.current.classList.remove("scrolled");
+      }
+    };
 
-        const handleScroll = () =>{
-        const scrollPosition = window.scrollY;
-        const scrollThreshold = 100;
-
-        if(scrollPosition>scrollThreshold){
-            imageElement.classList.add("scrolled")
-        }
-    }
-
-    window.addEventListener("scroll",handleScroll)
-   
-    }, [])
-    
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
-    <section className='w-full pt-36 md:pt-48 pb-10'>
-    <div className='space-y-6 text-center'>
-        <div className='space-y-6 mx-auto'>
-            <h1 className='gradient-title text-5xl font-bold md:text-6xl lg:text-7xl xl:text-8xl'>
-                Your AI Carrer Coach for
-                <br />
-                Professional Success
-            </h1>
-            <p className='mx-auto max-w-[600px] text-muted-foreground md:text-xl' >
-                Advance your career with personalized guidance,interview perp, and AI-powered tools for job 
-                success.
-            </p>
+    <section className="relative w-full pt-36 pb-28 overflow-hidden">
+
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 via-white to-purple-50"></div>
+
+      <div className="relative max-w-7xl mx-auto px-6 text-center">
+
+        {/* Heading */}
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-gray-900 leading-tight">
+          Your AI Career Coach for
+          <br />
+          <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Professional Success
+          </span>
+        </h1>
+
+        {/* Subtitle */}
+        <p className="mt-6 text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
+          Advance your career with personalized guidance, interview preparation,
+          and AI-powered tools that help you grow faster.
+        </p>
+
+        {/* Buttons */}
+        <div className="mt-8 flex justify-center gap-4 flex-wrap">
+
+          <Link href="/dashboard">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl">
+              Get Started
+            </Button>
+          </Link>
+
+          <Button
+            variant="outline"
+            className="border-gray-300 px-8 py-3 rounded-xl"
+          >
+            Watch Demo
+          </Button>
+
         </div>
 
-        <div className='flex justify-center space-x-4 pb-3'>
-            
-            <Link href='/dashboard'>
-            <Button size='lg' className='px-8' >Get Started</Button>
-            </Link>
+        {/* Image */}
+        <div className="mt-16 hero-image-wrapper">
 
-            <Link href='/dashboard' >
-            <Button variant='outline' size='lg' className='px-8' >Get Started</Button>
-            </Link>
+          <div ref={imageRef} className="hero-image">
 
-        </div>
-    </div>
-
-    <div className='hero-image-wrapper mt-5 md:mt-0'>
-        <div ref={imageref} className='hero-image'>
             <Image
-            src={"/banner3.jpeg"}
-            width={1280}
-            height={720}
-            alt="Bannner LakshyaAi"
-            className="rounded-lg shadow-2xl border mx-auto"
-            priority
-            
+              src="/banner.jpeg"
+              width={1200}
+              height={700}
+              alt="Dashboard Preview"
+              className="rounded-2xl shadow-xl border border-gray-200 mx-auto"
+              priority
             />
-        </div>
-    </div>
-    </section>
-  )
-}
 
-export default HeroSection
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* ⭐ Section Divider */}
+      <div className="mt-24 h-[2px] w-full bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-60"></div>
+
+    </section>
+  );
+};
+
+export default HeroSection;

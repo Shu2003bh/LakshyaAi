@@ -68,15 +68,18 @@ model CoverLetter {
 model IndustryInsight {
   id                String   @id @default(cuid())
   industry          String   @unique
-  salaryRanges      Json[]
-  growthRate        Float
-  demandLevel       String
-  topSkills         String[]
-  marketOutlook     String
-  keyTrends         String[]
-  recommendedSkills String[]
+
+  salaryRanges      Json[]        // keep required
+  growthRate        Float?        // make optional
+  demandLevel       String?       // optional
+  topSkills         String[]      // keep required
+  marketOutlook     String?       // optional
+  keyTrends         String[]      // keep required
+  recommendedSkills String[]      // keep required
+
   lastUpdated       DateTime @default(now())
   nextUpdate        DateTime
+
   users             User[]
 
   @@index([industry])

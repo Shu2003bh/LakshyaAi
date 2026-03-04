@@ -37,7 +37,7 @@ Rules:
 `;
 
   const res = await groq.chat.completions.create({
-    model: "llama-3.1-70b-versatile", // insights need better reasoning
+    model: "llama-3.1-8b-instant", // insights need better reasoning
     temperature: 0.4,
     max_tokens: 900,
     messages: [
