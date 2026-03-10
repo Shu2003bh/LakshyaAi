@@ -114,6 +114,7 @@ export function EntryForm({ type, entries, onChange }) {
                 variant="outline"
                 size="icon"
                 type="button"
+                className="bg-white border-gray-300 text-gray-700 hover:bg-red-50 hover:border-red-400"
                 onClick={() => handleDelete(index)}
               >
                 <X className="h-4 w-4" />
@@ -224,6 +225,7 @@ export function EntryForm({ type, entries, onChange }) {
               type="button"
               variant="ghost"
               size="sm"
+              className="text-indigo-600 hover:bg-indigo-50"
               onClick={handleImproveDescription}
               disabled={isImproving || !watch("description")}
             >
@@ -244,6 +246,7 @@ export function EntryForm({ type, entries, onChange }) {
             <Button
               type="button"
               variant="outline"
+              className="bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
               onClick={() => {
                 reset();
                 setIsAdding(false);
@@ -251,7 +254,7 @@ export function EntryForm({ type, entries, onChange }) {
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleAdd}>
+            <Button type="button" className="bg-indigo-600 text-white hover:bg-indigo-700" onClick={handleAdd}>
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Entry
             </Button>
@@ -261,10 +264,10 @@ export function EntryForm({ type, entries, onChange }) {
 
       {!isAdding && (
         <Button
-          className="w-full"
-          variant="outline"
-          onClick={() => setIsAdding(true)}
-        >
+  className="w-full bg-white border border-dashed border-gray-300 text-gray-700 hover:bg-indigo-50 hover:border-indigo-400 hover:text-indigo-700 transition"
+  variant="outline"
+  onClick={() => setIsAdding(true)}
+>
           <PlusCircle className="h-4 w-4 mr-2" />
           Add {type}
         </Button>

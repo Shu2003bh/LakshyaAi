@@ -98,11 +98,18 @@ export async function updateUser(data) {
 
   console.log("🔹 Clerk User ID:", userId);
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-  });
+let user = await db.user.findUnique({
+  where: { clerkUserId: userId },
+});
 
-  if (!user) throw new Error("User not found");
+if (!user) {
+  user = await db.user.create({
+    data: {
+      clerkUserId: userId,
+      email: "",
+    },
+  });
+}
 
   try {
     // 1️⃣ Check existing industry insight

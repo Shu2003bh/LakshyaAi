@@ -154,7 +154,7 @@ export default function ResumeBuilder({ initialContent }) {
         </h1>
         <div className="space-x-2">
           <Button
-            variant="destructive"
+            className="bg-indigo-600 text-white hover:bg-indigo-700"
             onClick={handleSubmit(onSubmit)}
             disabled={isSaving}
           >
@@ -170,7 +170,11 @@ export default function ResumeBuilder({ initialContent }) {
               </>
             )}
           </Button>
-          <Button onClick={generatePDF} disabled={isGenerating}>
+          <Button
+            className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+            onClick={generatePDF}
+            disabled={isGenerating}
+          >
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -187,9 +191,23 @@ export default function ResumeBuilder({ initialContent }) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="edit">Form</TabsTrigger>
-          <TabsTrigger value="preview">Markdown</TabsTrigger>
+
+        <TabsList className="bg-gray-100 p-1 rounded-lg">
+
+          <TabsTrigger
+            value="edit"
+            className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white rounded-md"
+          >
+            Form
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="preview"
+            className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white rounded-md"
+          >
+            Markdown
+          </TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="edit">
@@ -197,7 +215,7 @@ export default function ResumeBuilder({ initialContent }) {
             {/* Contact Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Contact Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/50">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email</label>
                   <Input
@@ -366,7 +384,7 @@ export default function ResumeBuilder({ initialContent }) {
             <Button
               variant="link"
               type="button"
-              className="mb-2"
+              className="mb-2 text-indigo-600 hover:bg-indigo-50"
               onClick={() =>
                 setResumeMode(resumeMode === "preview" ? "edit" : "preview")
               }

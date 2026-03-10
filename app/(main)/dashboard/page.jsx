@@ -3,6 +3,7 @@ import DashboardView from "./_component/dashboard-view";
 // import { getUserOnboardingStatus } from "@/actions/onboarding";
 import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/actions/onboarding";
+import {  getSkillProgress } from "@/actions/dashboard";
 
 export default async function DashboardPage() {
   const { isOnboarded } = await getUserOnboardingStatus();
@@ -14,10 +15,11 @@ export default async function DashboardPage() {
   }
 
   const insights = await getIndustryInsights();
+   const skillProgress = await getSkillProgress();
 
   return (
     <div className="container mx-auto">
-      <DashboardView insights={insights} />
+      <DashboardView insights={insights} skillProgress={skillProgress} />
     </div>
   );
 }
