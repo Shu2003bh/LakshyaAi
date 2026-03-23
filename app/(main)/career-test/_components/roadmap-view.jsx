@@ -17,15 +17,15 @@ console.error("Roadmap load error:", err);
 }
 }
 
-```
+
 if (career) load();
-```
+
 
 }, [career]);
 
 return ( <div className="mt-10">
 
-```
+
   <h2 className="text-3xl font-bold text-indigo-600 mb-8">
     {career} Career Roadmap
   </h2>

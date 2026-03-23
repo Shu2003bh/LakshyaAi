@@ -18,10 +18,14 @@ export default function RootLayout({ children }) {
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning={true}>
         <body
-          className={`${inter.className} bg-gradient-to-b from-indigo-50 via-white to-purple-50 text-gray-900`}
+          className={`${inter.className} bg-gray-50 text-gray-900`}
         >
-
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
 
             <div className="sticky top-0 z-50">
               <Header />

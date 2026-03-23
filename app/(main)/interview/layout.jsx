@@ -3,12 +3,18 @@ import { BarLoader } from "react-spinners";
 
 export default function Layout({ children }) {
   return (
-    <div className="px-5">
+    <div className="min-h-screen bg-white text-black">
+
       <Suspense
-        fallback={<BarLoader className="mt-4" width={"100%"} color="gray" />}
+        fallback={
+          <div className="p-6">
+            <BarLoader width={"100%"} color="#888" />
+          </div>
+        }
       >
         {children}
       </Suspense>
+
     </div>
   );
 }

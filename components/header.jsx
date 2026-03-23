@@ -382,8 +382,7 @@ const Header = async () => {
           <SignedOut>
             <SignInButton>
               <Button
-                variant="outline"
-                className="rounded-xl border-gray-200 hover:bg-gray-100"
+                className="rounded-full px-6 bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md hover:scale-105 transition"
               >
                 Sign In
               </Button>
