@@ -87,13 +87,13 @@
 // export default HeroSection;
 
 
-
 "use client";
 
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Mic, ArrowRight } from "lucide-react";
 
 const HeroSection = () => {
   const imageRef = useRef(null);
@@ -101,14 +101,12 @@ const HeroSection = () => {
   useEffect(() => {
     const handleScroll = () => {
       if (!imageRef.current) return;
-
       if (window.scrollY > 100) {
         imageRef.current.classList.add("scrolled");
       } else {
         imageRef.current.classList.remove("scrolled");
       }
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -116,45 +114,83 @@ const HeroSection = () => {
   return (
     <section className="relative w-full pt-32 pb-20 overflow-hidden">
 
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 via-white to-purple-50"></div>
+      {/* Background — same as before */}
+      <div className="absolute inset-0 bg-gradient-to-b from-indigo-50 via-white to-purple-50" />
 
       <div className="relative max-w-6xl mx-auto px-6 text-center">
 
-        {/* Heading */}
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-gray-900 leading-tight">
+        {/* ── Live badge (new) ── */}
+        <div className="inline-flex items-center gap-2 mb-6
+                        bg-indigo-50 border border-indigo-200
+                        text-indigo-600 text-xs font-semibold
+                        px-3 py-1.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+          AI Mock Interviews Now Live
+        </div>
+
+        {/* Heading — same as before */}
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight
+                       text-gray-900 leading-tight">
           Your AI Career Coach for
           <br />
-          <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-indigo-600 to-purple-600
+                           bg-clip-text text-transparent">
             Professional Success
           </span>
         </h1>
 
-        {/* Subtitle */}
+        {/* Subtitle — same as before */}
         <p className="mt-6 text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
           Advance your career with personalized guidance, interview preparation,
           and AI-powered tools that help you grow faster.
         </p>
 
-        {/* Buttons */}
-        <div className="mt-8 flex justify-center gap-4 flex-wrap">
+        {/* ── Buttons — Mock Interview added as primary CTA ── */}
+        <div className="mt-8 flex justify-center gap-3 flex-wrap">
 
+          {/* ⭐ PRIMARY — Mock Interview */}
+          <Link href="/voice-interview/setup">
+            <button className="
+              inline-flex items-center gap-2
+              bg-indigo-600 hover:bg-indigo-700
+              text-white font-semibold text-sm
+              px-6 py-3 rounded-xl
+              shadow-lg shadow-indigo-200 hover:shadow-indigo-300
+              active:scale-[0.97]
+              transition-all duration-150
+            ">
+              <Mic size={15} />
+              Try Mock Interview
+              <ArrowRight size={14} />
+            </button>
+          </Link>
+
+          {/* Get Started */}
           <Link href="/dashboard">
-            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl">
+            <Button className="bg-white text-gray-800 border border-gray-200
+                               px-6 py-3 rounded-xl shadow-sm
+                               hover:shadow-md hover:bg-gray-50 transition">
               Get Started
             </Button>
           </Link>
 
-          <Button className="bg-white text-gray-800 border border-gray-200 px-8 py-3 rounded-xl shadow-sm hover:shadow-md hover:bg-gray-50 transition">
+          {/* Watch Demo */}
+          <Button className="bg-white text-gray-800 border border-gray-200
+                             px-6 py-3 rounded-xl shadow-sm
+                             hover:shadow-md hover:bg-gray-50 transition">
             Watch Demo
           </Button>
+
         </div>
 
-        {/* Image */}
+        {/* Social proof (new) */}
+        <p className="mt-4 text-xs text-gray-400">
+          No signup needed to try · 5-min quick round available
+        </p>
+
+        {/* Image — exactly same as before */}
         <div className="mt-16 hero-image-wrapper">
-
           <div ref={imageRef} className="hero-image">
-
             <Image
               src="/banner.jpeg"
               width={1200}
@@ -163,9 +199,7 @@ const HeroSection = () => {
               className="rounded-2xl shadow-xl border border-gray-200 mx-auto"
               priority
             />
-
           </div>
-
         </div>
 
       </div>
@@ -174,4 +208,3 @@ const HeroSection = () => {
 };
 
 export default HeroSection;
-
