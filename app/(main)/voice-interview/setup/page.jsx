@@ -25,10 +25,10 @@ const ROLES = [
 
 // ─── Duration — key matches INTERVIEW_DURATION config ─────────────────────
 const DURATIONS = [
-  { key: "quick",    label: "5 min",  sub: "Quick round",    questions: "~3 Qs" },
-  { key: "standard", label: "10 min", sub: "Standard",       questions: "~6 Qs" },
-  { key: "focus",    label: "15 min", sub: "Deep dive",      questions: "~9 Qs" },
-  { key: "deep",     label: "20 min", sub: "Full interview", questions: "~12 Qs" },
+  { key: "quick",    label: "5 min",  sub: "Quick round"     },
+  { key: "standard", label: "10 min", sub: "Standard"        },
+  { key: "focus",    label: "15 min", sub: "Deep dive"       },
+  { key: "deep",     label: "20 min", sub: "Full interview"},
 ]
 
 // ─── Modes — keys match INTERVIEW_MODES config ────────────────────────────

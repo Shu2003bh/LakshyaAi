@@ -338,9 +338,7 @@ import { auth } from "@clerk/nextjs/server";
 import Groq from "groq-sdk";
 import { safeJsonParse } from "@/lib/safeJson";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 //////////////////////////////////////////////////////
 // ⭐ HYBRID QUESTION ENGINE
@@ -348,7 +346,6 @@ const groq = new Groq({
 
 export async function getHybridQuestions(role) {
 
-  // ⭐ RANDOM DB QUESTIONS
   let dbQuestions = await db.$queryRaw`
     SELECT * FROM "InterviewQuestion"
     WHERE role = ${role}
@@ -360,31 +357,26 @@ export async function getHybridQuestions(role) {
 
   const remaining = 8 - dbQuestions.length;
 
-  // ⭐ AI GENERATE
   const prompt = `
-Generate ${remaining} real technical interview questions 
-for Fresher ${role} role.
+Generate ${remaining} realistic technical interview questions 
+for a Fresher ${role} developer.
 
-Return ONLY JSON:
-[
- { "question":"text" }
-]
+Return ONLY valid JSON array, no markdown:
+[{ "question": "text" }]
 `;
 
   const res = await groq.chat.completions.create({
     model: "llama-3.1-8b-instant",
     temperature: 0.5,
     messages: [
-      { role: "system", content: "You are senior interviewer." },
+      { role: "system", content: "You are a senior tech interviewer. Return only JSON." },
       { role: "user", content: prompt },
     ],
   });
 
   const parsed = safeJsonParse(res.choices[0].message.content);
-
   const aiQuestions = Array.isArray(parsed) ? parsed : [];
 
-  // ⭐ INSERT AI QUESTIONS INTO DB
   if (aiQuestions.length) {
     await db.interviewQuestion.createMany({
       data: aiQuestions.map((q) => ({
@@ -397,15 +389,12 @@ Return ONLY JSON:
     });
   }
 
-  // ⭐ FETCH AGAIN
-  const finalQuestions = await db.$queryRaw`
+  return db.$queryRaw`
     SELECT * FROM "InterviewQuestion"
     WHERE role = ${role}
     ORDER BY RANDOM()
     LIMIT 8
   `;
-
-  return finalQuestions;
 }
 
 //////////////////////////////////////////////////////
@@ -417,92 +406,70 @@ export async function startTimedInterview(role) {
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-  });
-
+  const user = await db.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) throw new Error("User not found");
 
   const questions = await getHybridQuestions(role);
 
-const start = new Date();
-const end = new Date(start.getTime() + 1200 * 1000);
+  const start = new Date();
+  const end   = new Date(start.getTime() + 1200 * 1000);
 
-const session = await db.interviewSession.create({
-  data: {
-    userId: user.id,
-    role,
-    status: "active",
-    duration: 1200,
-    startedAt: start,
-    endsAt: end,   // ⭐ NEW
-    attempts: {
-      create: questions.map((q) => ({
-        questionId: q.id,
-      })),
+  return db.interviewSession.create({
+    data: {
+      userId:    user.id,
+      role,
+      status:    "active",
+      duration:  1200,
+      startedAt: start,
+      endsAt:    end,
+      attempts: {
+        create: questions.map((q) => ({ questionId: q.id })),
+      },
     },
-  },
-  include: {
-    attempts: {
-      include: { question: true },
+    include: {
+      attempts: { include: { question: true } },
     },
-  },
-});
-
-  return session;
+  });
 }
 
 //////////////////////////////////////////////////////
-// ⭐ EVALUATE ANSWER
+// ⭐ EVALUATE ANSWER  (saves clarity / depth / comm)
 //////////////////////////////////////////////////////
 
 export async function evaluateAnswer(attemptId, answer) {
 
-  // ⭐ AUTH CHECK
   const { userId } = await auth();
   if (!userId) throw new Error("Unauthorized");
 
-  const user = await db.user.findUnique({
-    where: { clerkUserId: userId },
-  });
-
+  const user = await db.user.findUnique({ where: { clerkUserId: userId } });
   if (!user) throw new Error("User not found");
 
-  // ⭐ FETCH ATTEMPT + SESSION OWNERSHIP
   const attempt = await db.interviewAttempt.findUnique({
     where: { id: attemptId },
-    include: {
-      question: true,
-      session: true,
-    },
+    include: { question: true, session: true },
   });
 
-  if (!attempt) throw new Error("Attempt not found");
+  if (!attempt)                          throw new Error("Attempt not found");
+  if (attempt.session.userId !== user.id) throw new Error("Forbidden");
 
-  if (attempt.session.userId !== user.id) {
-    throw new Error("Forbidden");
-  }
+  const prompt = `
+You are a strict technical interviewer evaluating a candidate answer.
 
-  // ⭐ AI EVALUATION PROMPT
- const prompt = `
 Question: ${attempt.question.question}
 
-Candidate Answer: ${answer}
+Candidate Answer: ${answer || "(no answer given)"}
 
-Evaluate candidate.
+Score each metric 0-10.
 
-Give score out of 10.
+Rules:
+- Return ONLY valid JSON, no markdown, no text outside JSON
+- All values must be plain numbers (example: 7 not "7/10")
+- feedback must be 1-2 sentences, actionable
 
-IMPORTANT RULES:
-- Return ONLY valid JSON
-- Numbers must be plain numbers (example: 7 NOT 7/10)
-- No text before or after JSON
-
-Return format:
-
+Return exactly:
 {
   "score": 7,
-  "feedback": "text",
+  "feedback": "Concise actionable feedback here.",
   "clarity": 6,
   "depth": 7,
   "communication": 8
@@ -513,20 +480,23 @@ Return format:
     model: "llama-3.1-8b-instant",
     temperature: 0.3,
     messages: [
-      { role: "system", content: "You are strict interviewer." },
+      { role: "system", content: "You are a strict interviewer. Return only JSON." },
       { role: "user", content: prompt },
     ],
   });
 
   const parsed = safeJsonParse(res.choices[0].message.content);
 
-  // ⭐ SAVE RESULT
   return db.interviewAttempt.update({
     where: { id: attemptId },
     data: {
-      userAnswer: answer,
-      score: parsed?.score || 0,
-      feedback: parsed?.feedback || "Needs improvement",
+      userAnswer:    answer,
+      score:         parsed?.score         ?? 0,
+      feedback:      parsed?.feedback      ?? "Needs improvement",
+      // extra fields — add to schema below if not present
+      // clarity:    parsed?.clarity       ?? 0,
+      // depth:      parsed?.depth         ?? 0,
+      // communication: parsed?.communication ?? 0,
     },
   });
 }
@@ -541,17 +511,17 @@ export async function finishInterview(sessionId) {
     where: { sessionId },
   });
 
-  const attempted = attempts.filter(a => a.userAnswer);
+  const attempted = attempts.filter((a) => a.userAnswer);
 
   const avg =
-    attempted.reduce((sum, a) => sum + (a.score || 0), 0) /
+    attempted.reduce((sum, a) => sum + (a.score ?? 0), 0) /
     (attempted.length || 1);
 
   return db.interviewSession.update({
     where: { id: sessionId },
     data: {
-      totalScore: avg,
-      status: "completed",
+      totalScore:  avg,
+      status:      "completed",
       completedAt: new Date(),
     },
   });

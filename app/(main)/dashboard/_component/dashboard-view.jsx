@@ -516,8 +516,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 
-import { generateSkillRoadmap } from "@/actions/dashboard"
-import { toggleRoadmapStep } from "@/actions/dashboard"
+import { generateSkillRoadmap } from "@/actions/industry-insight"
+import { toggleRoadmapStep } from "@/actions/industry-insight"
 
 const DashboardView = ({ insights }) => {
 
