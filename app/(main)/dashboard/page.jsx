@@ -18,7 +18,7 @@ export default async function DashboardPage() {
   //  const skillProgress = await getSkillProgress();
 
   return (
-    <div className="container mx-auto">
+     <div className="w-full">
       <DashboardView insights={insights}  />
     </div>
   );

@@ -3,12 +3,16 @@ import { Suspense } from "react";
 
 export default function Layout({ children }) {
   return (
-    <div className="px-5">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="text-6xl font-bold gradient-title">Industry Insights</h1>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
       <Suspense
-        fallback={<BarLoader className="mt-4" width={"100%"} color="gray" />}
+        fallback={
+          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+            <BarLoader width={200} color="#6366f1" />
+            <p className="text-sm text-slate-400 animate-pulse">
+              Loading your dashboard…
+            </p>
+          </div>
+        }
       >
         {children}
       </Suspense>
