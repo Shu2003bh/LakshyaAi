@@ -20,7 +20,7 @@
 // 
 import { getIndustryInsights } from "@/actions/industry-insight";
 import { getDashboardData } from "@/actions/dashboard";
-import DashboardView from "./_component/dashboard-view";
+import DashboardView from "../dashboard/_component/dashboard-view";
 import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/actions/onboarding";
 
