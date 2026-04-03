@@ -12,6 +12,7 @@ import {
 import { generateNextQuestion } from "@/lib/interview/engine/questionEngine"
 import { speechEngine } from "@/lib/interview/voice/speechEngine"
 import { RecorderEngine } from "@/lib/interview/voice/recorderEngine"
+import { saveVoiceInterviewResult } from "@/actions/voice-interview"
 
 // ─── States ───────────────────────────────────────────────────────────────
 const S = {
@@ -279,12 +280,29 @@ export default function VoiceInterviewSessionPage() {
     } catch (err) { console.error("processAnswer:", err); setUiState(S.ERROR) }
   }
 
-  function endSession() {
+  async function endSession() {
     clearInterval(clockRef.current); clearInterval(countdownRef.current); clearInterval(recordTimerRef.current)
     speechEngine.cancel()
     const report = completeSession(sessionRef.current)
     setFinalReport(report)
     setUiState(S.COMPLETED)
+
+    // ⭐ Save voice interview result to DB
+    try {
+      await saveVoiceInterviewResult({
+        role: config.role || "frontend_developer",
+        mode: config.mode || "fresher",
+        duration: config.duration || 10,
+        totalScore: Number(report?.averageScore) || 0,
+        feedback: report?.feedback || null,
+        scores: report?.scores || [],
+        strongAreas: report?.strongAreas || [],
+        weakAreas: report?.weakAreas || [],
+      })
+      console.log("✅ Voice interview saved to DB")
+    } catch (err) {
+      console.error("Failed to save voice interview:", err)
+    }
   }
 
   if (uiState === S.COMPLETED) return (

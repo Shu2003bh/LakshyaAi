@@ -1,393 +1,369 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { evaluateAnswer, finishInterview } from "@/actions/interview";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { submitAnswer, finishInterview } from "@/actions/interview";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { Clock, CheckCircle2, XCircle, ChevronRight, ArrowRight, AlertTriangle, Lightbulb, Flag } from "lucide-react";
+import { toast } from "sonner";
 
-// ─── tiny helpers ────────────────────────────────────────────────────────────
+/* ─── helpers ─── */
 function fmt(sec) {
-  const m = Math.floor(sec / 60)
-    .toString()
-    .padStart(2, "0");
+  const m = Math.floor(sec / 60).toString().padStart(2, "0");
   const s = (sec % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
 }
 
-const TOTAL = 1200; // 20 min
+/* ─── Option Labels ─── */
+const OPTION_LABELS = ["A", "B", "C", "D"];
 
-// ─── Circular Timer SVG ──────────────────────────────────────────────────────
-function CircleTimer({ remaining, total }) {
-  const R = 54;
-  const C = 2 * Math.PI * R;
-  const pct = remaining / total;
-  const dash = pct * C;
-  const urgent = remaining < 120;
-  const warning = remaining < 300;
-
-  const color = urgent ? "#ef4444" : warning ? "#f59e0b" : "#6366f1";
-
-  return (
-    <svg width="140" height="140" className="rotate-[-90deg]">
-      {/* track */}
-      <circle
-        cx="70" cy="70" r={R}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="8"
-        className="text-zinc-800"
-      />
-      {/* progress */}
-      <circle
-        cx="70" cy="70" r={R}
-        fill="none"
-        stroke={color}
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeDasharray={`${dash} ${C}`}
-        style={{ transition: "stroke-dasharray 1s linear, stroke 0.5s" }}
-      />
-    </svg>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function InterviewSessionClient({ session }) {
+/* ─── Main Component ─── */
+export default function SessionClient({ session }) {
   const router = useRouter();
 
   const [index, setIndex] = useState(0);
-  const [answer, setAnswer] = useState("");
-  const [remaining, setRemaining] = useState(TOTAL);
+  const [selected, setSelected] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [skipped, setSkipped] = useState([]); // indices skipped
-  const [submitted, setSubmitted] = useState([]); // indices already submitted
   const [finishing, setFinishing] = useState(false);
+  const [remaining, setRemaining] = useState(null);
+  const [results, setResults] = useState([]); // Track all answers
   const timerRef = useRef(null);
-  const textRef = useRef(null);
 
-  // ── Timer ──────────────────────────────────────────────────────────────────
+  const total = session.attempts.length;
+  const q = session.attempts[index].question;
+  const isLast = index === total - 1;
+
+  /* ─── Timer ─── */
   useEffect(() => {
+    if (!session.endsAt) return;
+
     const tick = () => {
       const end = new Date(session.endsAt).getTime();
       const sec = Math.max(0, Math.floor((end - Date.now()) / 1000));
       setRemaining(sec);
-      if (sec === 0) doFinish();
+      if (sec <= 0) {
+        clearInterval(timerRef.current);
+        handleFinish();
+      }
     };
     tick();
     timerRef.current = setInterval(tick, 1000);
     return () => clearInterval(timerRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // eslint-disable-line
 
-  // auto-focus textarea on question change
-  useEffect(() => {
-    textRef.current?.focus();
-  }, [index]);
-
-  const attempt = session.attempts[index];
-  const total = session.attempts.length;
-  const isLast = index === total - 1;
-  const urgent = remaining < 120;
-  const warning = remaining < 300;
-
-  // ── Submit ─────────────────────────────────────────────────────────────────
-  const handleSubmit = async () => {
-    if (!answer.trim() || loading) return;
+  /* ─── Submit answer ─── */
+  const handleSubmitAnswer = async () => {
+    if (!selected || loading) return;
     setLoading(true);
+
     try {
-      await evaluateAnswer(attempt.id, answer);
-      setSubmitted((p) => [...p, index]);
-      setAnswer("");
-      if (isLast) {
-        doFinish();
-      } else {
-        setIndex((i) => i + 1);
-      }
+      const attempt = session.attempts[index];
+      await submitAnswer(attempt.id, selected);
+
+      const correct = selected === q.correctAnswer;
+      setIsCorrect(correct);
+      setSubmitted(true);
+      setResults((prev) => [...prev, { index, selected, correct, question: q }]);
+    } catch (err) {
+      toast.error("Failed to submit answer");
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Skip ───────────────────────────────────────────────────────────────────
-  const handleSkip = () => {
+  /* ─── Next question ─── */
+  const handleNext = () => {
     if (isLast) {
-      doFinish();
+      handleFinish();
       return;
     }
-    setSkipped((p) => [...p, index]);
-    setAnswer("");
     setIndex((i) => i + 1);
+    setSelected(null);
+    setSubmitted(false);
+    setIsCorrect(null);
   };
 
-  // ── Finish ─────────────────────────────────────────────────────────────────
-  const doFinish = async () => {
+  /* ─── Finish ─── */
+  const handleFinish = async () => {
     if (finishing) return;
     setFinishing(true);
     clearInterval(timerRef.current);
-    await finishInterview(session.id);
-    router.push(`/interview/result/${session.id}`);
+    try {
+      await finishInterview(session.id);
+      toast.success("Interview completed! Check your results.");
+      router.push(`/interview/result/${session.id}`);
+    } catch {
+      toast.error("Failed to finish interview");
+    }
   };
 
-  // ─── JSX ──────────────────────────────────────────────────────────────────
+  /* ─── Timer color ─── */
+  const urgent = remaining !== null && remaining < 120;
+  const warning = remaining !== null && remaining < 300;
+  const timerColor = urgent ? "#ef4444" : warning ? "#f59e0b" : "#6366f1";
+
+  /* ─── Options with correct labels ─── */
+  const options = q.options || [];
+
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-['IBM_Plex_Mono',monospace] px-4 py-8">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
 
-      {/* Google Font */}
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@400;600;700&display=swap');`}</style>
+      {/* Top Bar */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
 
-      <div className="max-w-3xl mx-auto space-y-6">
-
-        {/* ── TOP BAR ─────────────────────────────────────── */}
-        <div className="flex items-center justify-between">
-
-          {/* Role badge */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs uppercase tracking-widest text-zinc-500">Role</span>
-            <span
-              className="px-3 py-1 rounded-full text-xs font-semibold border"
-              style={{ borderColor: "#6366f1", color: "#818cf8" }}
-            >
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
               {session.role}
+            </span>
+            <span className="text-xs text-slate-300">·</span>
+            <span className="text-xs text-slate-400">
+              Question {index + 1} of {total}
             </span>
           </div>
 
-          {/* Question dots */}
-          <div className="flex gap-1.5">
+          {remaining !== null && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border" style={{
+              borderColor: timerColor + "40",
+              background: timerColor + "08",
+            }}>
+              <Clock size={13} style={{ color: timerColor }} />
+              <span className="text-sm font-mono font-bold tabular-nums" style={{ color: timerColor }}>
+                {fmt(remaining)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="h-1 bg-slate-100">
+        <motion.div
+          className="h-full bg-indigo-500 rounded-r-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${((index + 1) / total) * 100}%` }}
+          transition={{ duration: 0.3 }}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-start justify-center px-4 py-8">
+        <div className="w-full max-w-3xl space-y-5">
+
+          {/* Question Dots */}
+          <div className="flex justify-center gap-1.5">
             {session.attempts.map((_, i) => {
-              const isSubmittedDot = submitted.includes(i);
-              const isSkippedDot = skipped.includes(i);
+              const result = results.find((r) => r.index === i);
               const isCurrent = i === index;
+              let bg = "#e2e8f0";
+              if (result) bg = result.correct ? "#22c55e" : "#ef4444";
+              if (isCurrent) bg = "#6366f1";
               return (
                 <div
                   key={i}
-                  className="w-2.5 h-2.5 rounded-full transition-all duration-300"
+                  className="rounded-full transition-all duration-200"
                   style={{
-                    background: isCurrent
-                      ? "#6366f1"
-                      : isSubmittedDot
-                      ? "#22c55e"
-                      : isSkippedDot
-                      ? "#f59e0b"
-                      : "#27272a",
-                    transform: isCurrent ? "scale(1.4)" : "scale(1)",
+                    width: isCurrent ? 24 : 8,
+                    height: 8,
+                    background: bg,
+                    borderRadius: isCurrent ? 4 : "50%",
                   }}
                 />
               );
             })}
           </div>
-        </div>
 
-        {/* ── MAIN CARD ───────────────────────────────────── */}
-        <div
-          className="rounded-2xl border p-6 space-y-6"
-          style={{
-            borderColor: urgent ? "#7f1d1d" : warning ? "#78350f" : "#27272a",
-            background: urgent
-              ? "rgba(127,29,29,0.08)"
-              : warning
-              ? "rgba(120,53,15,0.06)"
-              : "#111113",
-            boxShadow: urgent
-              ? "0 0 40px rgba(239,68,68,0.08)"
-              : "0 0 40px rgba(99,102,241,0.05)",
-          }}
-        >
-
-          {/* ── TIMER + QUESTION NUMBER ─── */}
-          <div className="flex items-center gap-6">
-
-            {/* Timer circle */}
-            <div className="relative flex-shrink-0">
-              <CircleTimer remaining={remaining} total={TOTAL} />
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span
-                  className="text-xl font-semibold tabular-nums"
-                  style={{ color: urgent ? "#ef4444" : warning ? "#f59e0b" : "#a5b4fc" }}
-                >
-                  {fmt(remaining)}
-                </span>
-                <span className="text-[10px] text-zinc-600 uppercase tracking-wider">left</span>
-              </div>
-            </div>
-
-            {/* Question header */}
-            <div className="flex-1 space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-zinc-500 uppercase tracking-widest">
-                  Question
-                </span>
-                <span className="text-lg font-bold text-zinc-200 font-['Sora']">
-                  {index + 1}
-                  <span className="text-zinc-600 font-normal text-base"> / {total}</span>
-                </span>
+          {/* Question Card */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+            >
+              {/* Question Header */}
+              <div className="px-6 py-5 border-b border-slate-100">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-sm font-bold text-indigo-600">{index + 1}</span>
+                  </div>
+                  <div>
+                    <p className="text-base font-medium text-slate-800 leading-relaxed">
+                      {q.question}
+                    </p>
+                    {q.difficulty && (
+                      <span className={`inline-block mt-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        q.difficulty === "Hard" ? "bg-red-50 text-red-600" :
+                        q.difficulty === "Medium" ? "bg-amber-50 text-amber-600" :
+                        "bg-emerald-50 text-emerald-600"
+                      }`}>
+                        {q.difficulty}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Tags */}
-              <div className="flex gap-2 flex-wrap">
-                {attempt.question.difficulty && (
-                  <span
-                    className="text-[10px] px-2 py-0.5 rounded-full border"
-                    style={{
-                      borderColor:
-                        attempt.question.difficulty === "Hard"
-                          ? "#7f1d1d"
-                          : attempt.question.difficulty === "Medium"
-                          ? "#78350f"
-                          : "#14532d",
-                      color:
-                        attempt.question.difficulty === "Hard"
-                          ? "#fca5a5"
-                          : attempt.question.difficulty === "Medium"
-                          ? "#fcd34d"
-                          : "#86efac",
-                    }}
+              {/* Options */}
+              <div className="px-6 py-5 space-y-2.5">
+                {options.map((opt, i) => {
+                  const optLabel = typeof opt === "string" && opt.match(/^[A-D]\.?\s/) ? opt : `${OPTION_LABELS[i]}. ${opt}`;
+                  const optValue = typeof opt === "string" && opt.match(/^[A-D]\.?\s/) ? opt.charAt(0) : OPTION_LABELS[i];
+                  const isSelected = selected === optValue;
+
+                  let borderColor = "#e2e8f0";
+                  let bgColor = "transparent";
+                  let textColor = "#475569";
+
+                  if (submitted) {
+                    if (optValue === q.correctAnswer) {
+                      borderColor = "#22c55e";
+                      bgColor = "#f0fdf4";
+                      textColor = "#166534";
+                    } else if (isSelected && !isCorrect) {
+                      borderColor = "#ef4444";
+                      bgColor = "#fef2f2";
+                      textColor = "#991b1b";
+                    }
+                  } else if (isSelected) {
+                    borderColor = "#6366f1";
+                    bgColor = "#eef2ff";
+                    textColor = "#3730a3";
+                  }
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => !submitted && setSelected(optValue)}
+                      disabled={submitted}
+                      className="w-full flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all duration-150 disabled:cursor-default"
+                      style={{ borderColor, background: bgColor }}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{
+                          background: isSelected && !submitted ? "#6366f1" : submitted && optValue === q.correctAnswer ? "#22c55e" : submitted && isSelected ? "#ef4444" : "#f1f5f9",
+                          color: (isSelected && !submitted) || (submitted && (optValue === q.correctAnswer || isSelected)) ? "#fff" : "#94a3b8",
+                        }}
+                      >
+                        {optValue}
+                      </div>
+                      <span className="text-sm font-medium flex-1" style={{ color: textColor }}>
+                        {typeof opt === "string" && opt.match(/^[A-D]\.?\s/) ? opt.slice(2).trim() : opt}
+                      </span>
+                      {submitted && optValue === q.correctAnswer && (
+                        <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />
+                      )}
+                      {submitted && isSelected && !isCorrect && optValue !== q.correctAnswer && (
+                        <XCircle size={18} className="text-red-500 flex-shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Explanation (shown after submit) */}
+              <AnimatePresence>
+                {submitted && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
                   >
-                    {attempt.question.difficulty}
-                  </span>
+                    <div className={`mx-6 mb-5 p-4 rounded-xl border ${
+                      isCorrect ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
+                    }`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        {isCorrect ? (
+                          <CheckCircle2 size={16} className="text-emerald-600" />
+                        ) : (
+                          <Lightbulb size={16} className="text-amber-600" />
+                        )}
+                        <span className={`text-sm font-semibold ${isCorrect ? "text-emerald-700" : "text-amber-700"}`}>
+                          {isCorrect ? "Correct!" : "Incorrect"}
+                        </span>
+                      </div>
+                      {q.explanation && (
+                        <p className={`text-xs leading-relaxed ${isCorrect ? "text-emerald-600" : "text-amber-600"}`}>
+                          {q.explanation}
+                        </p>
+                      )}
+                      {!isCorrect && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Correct answer: <span className="font-semibold">{q.correctAnswer}</span>
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
                 )}
-                {attempt.question.type && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-zinc-700 text-zinc-400">
-                    {attempt.question.type}
-                  </span>
-                )}
-                {attempt.question.company && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full border border-indigo-900 text-indigo-400">
-                    {attempt.question.company}
-                  </span>
+              </AnimatePresence>
+
+              {/* Action Bar */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center gap-3">
+                {!submitted ? (
+                  <>
+                    <button
+                      onClick={handleFinish}
+                      disabled={finishing}
+                      className="px-4 py-2.5 rounded-xl text-xs font-medium text-slate-400 border border-slate-200 hover:border-slate-300 hover:text-slate-500 transition-colors"
+                    >
+                      <Flag size={12} className="inline mr-1" />
+                      End Early
+                    </button>
+                    <button
+                      onClick={handleSubmitAnswer}
+                      disabled={!selected || loading}
+                      className="ml-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {loading ? (
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          Submit
+                          <CheckCircle2 size={14} />
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleNext}
+                    className="ml-auto flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 active:scale-[0.97] transition-all"
+                  >
+                    {isLast ? "See Results" : "Next Question"}
+                    <ArrowRight size={14} />
+                  </button>
                 )}
               </div>
+            </motion.div>
+          </AnimatePresence>
 
-              {/* Progress bar */}
-              <div className="h-1 rounded-full bg-zinc-800 mt-2">
-                <div
-                  className="h-1 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${((index + 1) / total) * 100}%`,
-                    background: "linear-gradient(90deg, #6366f1, #8b5cf6)",
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ── QUESTION TEXT ─── */}
-          <div
-            className="rounded-xl p-5 leading-relaxed text-zinc-200 text-base font-['Sora'] tracking-wide"
-            style={{
-              background: "#0d0d10",
-              border: "1px solid #1e1e24",
-              lineHeight: "1.75",
-            }}
-          >
-            {attempt.question.question}
-          </div>
-
-          {/* ── ANSWER TEXTAREA ─── */}
-          <div className="space-y-2">
-            <label className="text-[11px] uppercase tracking-widest text-zinc-500">
-              Your Answer
-            </label>
-            <textarea
-              ref={textRef}
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.ctrlKey) handleSubmit();
-              }}
-              placeholder="Type your answer here… (Ctrl+Enter to submit)"
-              rows={6}
-              className="w-full resize-none rounded-xl p-4 text-sm text-zinc-200 placeholder-zinc-700 outline-none transition-all duration-200"
-              style={{
-                background: "#0a0a0d",
-                border: "1.5px solid",
-                borderColor: answer.trim() ? "#6366f1" : "#1e1e24",
-                fontFamily: "IBM Plex Mono, monospace",
-              }}
-            />
-            <div className="flex justify-between text-[10px] text-zinc-700">
-              <span>{answer.length} chars</span>
-              <span>Ctrl+Enter to submit</span>
-            </div>
-          </div>
-
-          {/* ── ACTIONS ─── */}
-          <div className="flex items-center gap-3 pt-1">
-
-            {/* Submit */}
-            <button
-              onClick={handleSubmit}
-              disabled={loading || !answer.trim() || finishing}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{
-                background: answer.trim()
-                  ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
-                  : "#27272a",
-                color: "#fff",
-                boxShadow: answer.trim() ? "0 4px 20px rgba(99,102,241,0.3)" : "none",
-              }}
+          {/* Urgent Warning */}
+          {urgent && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Spinner />
-                  Evaluating…
-                </span>
-              ) : isLast ? (
-                "Submit & Finish"
-              ) : (
-                "Submit & Next →"
-              )}
-            </button>
-
-            {/* Skip */}
-            {!isLast && (
-              <button
-                onClick={handleSkip}
-                disabled={loading || finishing}
-                className="px-5 py-3 rounded-xl text-sm text-zinc-400 border border-zinc-800 hover:border-zinc-600 hover:text-zinc-200 transition-all duration-200 disabled:opacity-40"
-              >
-                Skip
-              </button>
-            )}
-
-            {/* End early */}
-            <button
-              onClick={doFinish}
-              disabled={finishing}
-              className="px-4 py-3 rounded-xl text-xs text-zinc-600 hover:text-red-400 border border-transparent hover:border-red-900 transition-all duration-200 disabled:opacity-40"
-            >
-              End
-            </button>
-          </div>
-
+              <AlertTriangle size={14} />
+              <span className="font-medium">Less than 2 minutes remaining!</span>
+            </motion.div>
+          )}
         </div>
+      </div>
 
-        {/* ── BOTTOM STATUS ───────────────────────────────── */}
-        <div className="flex justify-between text-[11px] text-zinc-600 px-1">
-          <span>✓ {submitted.length} submitted</span>
-          <span>⟳ {skipped.length} skipped</span>
-          <span>◎ {total - submitted.length - skipped.length} remaining</span>
+      {/* Bottom Status */}
+      <div className="bg-white border-t border-slate-200 px-6 py-3">
+        <div className="max-w-3xl mx-auto flex justify-between text-[11px] text-slate-400">
+          <span>✓ {results.filter((r) => r.correct).length} correct</span>
+          <span>✗ {results.filter((r) => !r.correct).length} wrong</span>
+          <span>◎ {total - results.length} remaining</span>
         </div>
-
-        {/* Urgent warning */}
-        {urgent && (
-          <div
-            className="rounded-xl px-4 py-3 text-sm text-center animate-pulse"
-            style={{ background: "rgba(239,68,68,0.1)", color: "#fca5a5", border: "1px solid #7f1d1d" }}
-          >
-            ⚠️ Less than 2 minutes! Wrap up quickly.
-          </div>
-        )}
-
       </div>
     </div>
-  );
-}
-
-// ── Micro spinner ─────────────────────────────────────────────────────────────
-function Spinner() {
-  return (
-    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-    </svg>
   );
 }

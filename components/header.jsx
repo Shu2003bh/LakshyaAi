@@ -236,6 +236,7 @@ import {
   PenBoxIcon,
   GraduationCapIcon,
   Target,
+  Mic,
 } from "lucide-react";
 
 import {
@@ -370,6 +371,19 @@ const Header = async () => {
                   <Link href="/interview" className="flex items-center gap-2">
                     <GraduationCapIcon className="h-4 w-4" />
                     Interview Prep
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer text-gray-700 
+  hover:bg-violet-50 hover:text-violet-700 
+  focus:bg-violet-50 focus:text-violet-700
+  data-[highlighted]:bg-violet-50 data-[highlighted]:text-violet-700"
+                >
+                  <Link href="/voice-interview/setup" className="flex items-center gap-2">
+                    <Mic className="h-4 w-4" />
+                    Voice Interview
                   </Link>
                 </DropdownMenuItem>
 

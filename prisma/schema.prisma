@@ -21,12 +21,13 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  assessments       Assessment[]
-  coverLetters      CoverLetter[]
-  resume            Resume?
-  roadmaps          SkillRoadmap[]
-  skillXP           SkillXP[]
-  interviewSessions InterviewSession[]
+  assessments            Assessment[]
+  coverLetters           CoverLetter[]
+  resume                 Resume?
+  roadmaps               SkillRoadmap[]
+  skillXP                SkillXP[]
+  interviewSessions      InterviewSession[]
+  voiceInterviewSessions VoiceInterviewSession[]
 
   industryInsight IndustryInsight? @relation(fields: [industry], references: [industry])
 }
@@ -97,7 +98,7 @@ model IndustryInsight {
 }
 
 //////////////////////////////
-// 🚀 NEW ROADMAP SYSTEM
+// 🚀 ROADMAP SYSTEM
 //////////////////////////////
 
 model SkillRoadmap {
@@ -133,7 +134,7 @@ model RoadmapStep {
 }
 
 //////////////////////////////
-// ⭐ FUTURE GAMIFICATION ENGINE
+// ⭐ GAMIFICATION ENGINE
 //////////////////////////////
 
 model SkillXP {
@@ -156,20 +157,22 @@ model SkillXP {
 //////////////////////////////////////
 
 model InterviewQuestion {
-  id         String   @id @default(cuid())
-  role       String
-  company    String?
-  type       String // Technical | HR | DSA | Project
-  difficulty String // Easy | Medium | Hard
-  question   String
-  tags       String[]
+  id            String  @id @default(cuid())
+  role          String
+  question      String
+  options       Json?
+  correctAnswer String?
+  difficulty    String  @default("Medium") // Easy | Medium | Hard
+  category      String  @default("Technical") // Technical | DSA | System Design | HR | Behavioral
+  explanation   String? // AI-generated explanation for correct answer
 
   createdAt DateTime @default(now())
 
-  attempts InterviewAttempt[]
+  interviewAttempts InterviewAttempt[]
 
   @@index([role])
   @@index([difficulty])
+  @@index([category])
 }
 
 //////////////////////////////////////
@@ -182,11 +185,11 @@ model InterviewSession {
   role        String
   status      String    @default("active") // active | completed
   totalScore  Float?
-  createdAt   DateTime  @default(now())
-  duration    Int       @default(1200) // seconds
+  duration    Int?      @default(1200) // seconds
   startedAt   DateTime?
-  endsAt      DateTime
+  endsAt      DateTime?
   completedAt DateTime?
+  createdAt   DateTime  @default(now())
 
   user     User               @relation(fields: [userId], references: [id])
   attempts InterviewAttempt[]
@@ -200,18 +203,34 @@ model InterviewAttempt {
   questionId String
 
   userAnswer String?
+  isCorrect  Boolean?
   score      Float?
-  feedback   String?
-
-  clarityScore       Float?
-  depthScore         Float?
-  communicationScore Float?
 
   createdAt DateTime @default(now())
 
   session  InterviewSession  @relation(fields: [sessionId], references: [id])
   question InterviewQuestion @relation(fields: [questionId], references: [id])
+}
 
-  @@index([sessionId])
-  @@index([questionId])
+//////////////////////////////////////
+// 🎙️ VOICE INTERVIEW SESSION
+//////////////////////////////////////
+
+model VoiceInterviewSession {
+  id          String   @id @default(cuid())
+  userId      String
+  role        String
+  mode        String   // fresher | intermediate | advanced | faang
+  duration    Int      // minutes
+  totalScore  Float?
+  feedback    String?
+  scores      Json?    // Array of { skill, score, question }
+  strongAreas String[]
+  weakAreas   String[]
+  status      String   @default("completed")
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }

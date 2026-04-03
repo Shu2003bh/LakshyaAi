@@ -277,7 +277,7 @@ import {
   BookOpen, Code2, Database, Globe, Server, Activity,
   Clock, BarChart2, Layers, CheckCircle2, Circle,
   TrendingUp, TrendingDown, BriefcaseIcon, Award,
-  FileText, Cpu, Target, Sparkles, GraduationCap,
+  FileText, Cpu, Target, Sparkles, GraduationCap, Mic,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { generateSkillRoadmap, toggleRoadmapStep } from "@/actions/industry-insight";
@@ -427,6 +427,7 @@ export default function DashboardView({ insights, dashboardData }) {
   const streak    = stats.streak    ?? 0;
   const xpToNext  = (maxLevel + 1) * 1000;
   const xpPct     = Math.min(Math.round((totalXP % 1000) / 10), 100);
+  const recentSessions = dashboardData?.recentSessions ?? [];
 
   /* ── roadmap handlers ── */
   const handleSkillClick = async (skill) => {
@@ -946,6 +947,61 @@ export default function DashboardView({ insights, dashboardData }) {
                 <span className="text-xs text-slate-500 leading-snug">{trend}</span>
               </div>
             ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ══ QUICK ACTIONS ══ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <a href="/interview" className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all group">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+            <Brain size={18} className="text-indigo-600" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-slate-700">Start MCQ Interview</div>
+            <div className="text-xs text-slate-400">Practice role-specific questions</div>
+          </div>
+          <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-400 transition-colors" />
+        </a>
+        <a href="/voice-interview/setup" className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-violet-200 transition-all group">
+          <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center flex-shrink-0">
+            <Mic size={18} className="text-violet-600" />
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-slate-700">Start Voice Interview</div>
+            <div className="text-xs text-slate-400">AI voice-based practice</div>
+          </div>
+          <ChevronRight size={16} className="text-slate-300 group-hover:text-violet-400 transition-colors" />
+        </a>
+      </div>
+
+      {/* ══ RECENT SESSIONS ══ */}
+      {recentSessions.length > 0 && (
+        <Card title="Recent Interview Sessions" className="mb-4">
+          <div className="space-y-1.5">
+            {recentSessions.slice(0, 6).map((s) => {
+              const score = s.score ?? 0;
+              const scoreColor = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
+              const isMCQ = s.type === "mcq";
+              return (
+                <a
+                  key={s.id}
+                  href={isMCQ ? `/interview/result/${s.id}` : "#"}
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: isMCQ ? "#eef2ff" : "#f5f3ff" }}>
+                    {isMCQ ? <Brain size={14} className="text-indigo-500" /> : <Mic size={14} className="text-violet-500" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold text-slate-600 truncate capitalize">{s.role?.replace(/_/g, " ")}</div>
+                    <div className="text-[10px] text-slate-400">{isMCQ ? "MCQ" : "Voice"} · {new Date(s.date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</div>
+                  </div>
+                  <div className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ color: scoreColor, background: scoreColor + "12" }}>
+                    {score}%
+                  </div>
+                </a>
+              );
+            })}
           </div>
         </Card>
       )}

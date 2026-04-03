@@ -1,27 +1,24 @@
 import { getIndustryInsights } from "@/actions/industry-insight";
+import { getDashboardData } from "@/actions/dashboard";
 import DashboardView from "./_component/dashboard-view";
-// import { getUserOnboardingStatus } from "@/actions/onboarding";
-import { redirect } from "next/navigation";
 import { getUserOnboardingStatus } from "@/actions/onboarding";
-// import {  getSkillProgress } from "@/actions/dashboard";
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
   const { isOnboarded } = await getUserOnboardingStatus();
 
-  // If not onboarded, redirect to onboarding page
-  // Skip this check if already on the onboarding page
   if (!isOnboarded) {
     redirect("/onboarding");
   }
 
-  const insights = await getIndustryInsights();
-  //  const skillProgress = await getSkillProgress();
+  const [insights, dashboardData] = await Promise.all([
+    getIndustryInsights(),
+    getDashboardData(),
+  ]);
 
   return (
-     <div className="w-full">
-      <DashboardView insights={insights}  />
+    <div className="w-full">
+      <DashboardView insights={insights} dashboardData={dashboardData} />
     </div>
   );
 }
-
-
